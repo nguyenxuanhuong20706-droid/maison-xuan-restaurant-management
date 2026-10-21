@@ -1,0 +1,73 @@
+services:
+  # 1. Cơ sở dữ liệu PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: nhahang_postgres
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT_DB:-5433}:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-nhahang_db}
+      POSTGRES_USER: ${DB_USER:-nhahang_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-nhahang_password_2026}
+    volumes:
+      - nhahang_pgdata:/var/lib/postgresql/data
+    networks:
+      - nhahang_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nhahang_user} -d ${DB_NAME:-nhahang_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Ứng dụng Quản lý Nhà hàng (Node.js Express)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nhahang_web
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT_APP:-5000}:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-nhahang_db}
+      DB_USER: ${DB_USER:-nhahang_user}
+      DB_PASSWORD: ${DB_PASSWORD:-nhahang_password_2026}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nhahang_net
+
+  # 3. Giao diện quản trị PostgreSQL (pgAdmin 4)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nhahang_pgadmin
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT_PGADMIN:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@nhahang.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-Admin@NhaHang2026}
+    volumes:
+      - nhahang_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nhahang_net
+
+volumes:
+  nhahang_pgdata:
+    name: nhahang_pgdata
+  nhahang_pgadmin_data:
+    name: nhahang_pgadmin_data
+
+networks:
+  nhahang_net:
+    name: nhahang_net
+    driver: bridge

@@ -1,0 +1,16 @@
+{
+  "name": "nhahang-management",
+  "version": "1.0.0",
+  "description": "Hệ thống quản lý nhà hàng - Đồ án môn Triển khai và Quản trị Hệ thống",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.3"
+  }
+}

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NhaHang — Hệ Thống Quản Lý Nhà Hàng</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar / Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">🍲</div>
+        <div class="brand-text">
+          <h1>NhaHang System</h1>
+          <p class="subtitle">Triển Khai & Quản Trị Hệ Thống Phần Mềm</p>
+        </div>
+      </div>
+
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="orders-tab" id="tab-btn-orders">
+          <span class="tab-icon">📋</span>
+          <span>Đơn Hàng</span>
+        </button>
+        <button class="nav-tab" data-tab="tables-tab" id="tab-btn-tables">
+          <span class="tab-icon">🪑</span>
+          <span>Bàn Ăn</span>
+        </button>
+        <button class="nav-tab" data-tab="dishes-tab" id="tab-btn-dishes">
+          <span class="tab-icon">🍜</span>
+          <span>Thực Đơn (Món Ăn)</span>
+        </button>
+      </nav>
+
+      <div class="system-status">
+        <div class="status-indicator online"></div>
+        <div class="status-info">
+          <span class="status-title">Hệ thống Docker</span>
+          <span class="status-sub">PostgreSQL + Express</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- 1. TAB: ĐƠN HÀNG -->
+      <section id="orders-tab" class="tab-pane active">
+        <div class="section-header">
+          <div>
+            <h2>Quản Lý Đơn Hàng & Đặt Món</h2>
+            <p>Theo dõi gọi món, tính tiền tự động và trạng thái phục vụ</p>
+          </div>
+          <button class="btn btn-primary" id="btn-open-create-order">
+            ➕ Tạo Đơn Hàng Mới
+          </button>
+        </div>
+
+        <!-- Filter orders -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label for="order-status-filter">Lọc theo trạng thái:</label>
+            <select id="order-status-filter" class="form-control">
+              <option value="">Tất cả trạng thái</option>
+              <option value="pending">Chờ xử lý (Pending)</option>
+              <option value="serving">Đang phục vụ (Serving)</option>
+              <option value="completed">Đã hoàn thành (Completed)</option>
+              <option value="cancelled">Đã hủy (Cancelled)</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-orders">🔄 Làm mới</button>
+        </div>
+
+        <div class="orders-grid" id="orders-list">
+          <!-- Render dynamically via app.js -->
+        </div>
+      </section>
+
+      <!-- 2. TAB: BÀN ĂN -->
+      <section id="tables-tab" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Sơ Đồ & Danh Sách Bàn Ăn</h2>
+            <p>Quản lý trạng thái bàn ăn (Trống, Đang có khách, Đã đặt)</p>
+          </div>
+          <button class="btn btn-primary" id="btn-open-create-table">
+            ➕ Thêm Bàn Mới
+          </button>
+        </div>
+
+        <div class="tables-summary" id="tables-summary">
+          <!-- Summary badges -->
+        </div>
+
+        <div class="tables-grid" id="tables-list">
+          <!-- Render dynamically via app.js -->
+        </div>
+      </section>
+
+      <!-- 3. TAB: MÓN ĂN -->
+      <section id="dishes-tab" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Thực Đơn Nhà Hàng</h2>
+            <p>Thêm, chỉnh sửa, cập nhật trạng thái và xóa món ăn</p>
+          </div>
+          <button class="btn btn-primary" id="btn-open-create-dish">
+            ➕ Thêm Món Ăn Mới
+          </button>
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-group">
+            <input type="text" id="dish-search-input" class="form-control" placeholder="🔍 Tìm tên món ăn...">
+          </div>
+          <div class="filter-group">
+            <select id="dish-category-filter" class="form-control">
+              <option value="">Tất cả danh mục</option>
+              <option value="Món chính">Món chính</option>
+              <option value="Khai vị">Khai vị</option>
+              <option value="Đồ uống">Đồ uống</option>
+              <option value="Tráng miệng">Tráng miệng</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-dishes">🔄 Làm mới</button>
+        </div>
+
+        <div class="dishes-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên món</th>
+                <th>Danh mục</th>
+                <th>Đơn giá</th>
+                <th>Trạng thái</th>
+                <th style="text-align: right;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="dishes-table-body">
+              <!-- Render dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: TẠO ĐƠN HÀNG MỚI -->
+  <div class="modal" id="modal-order">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3>Tạo Đơn Hàng Mới (Gọi Món)</h3>
+        <button class="btn-close" id="btn-close-modal-order">&times;</button>
+      </div>
+      <form id="form-create-order">
+        <div class="form-group">
+          <label for="order-select-table">Chọn Bàn Ăn *</label>
+          <select id="order-select-table" class="form-control" required>
+            <option value="">-- Vui lòng chọn bàn --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Danh Sách Món Chọn *</label>
+          <div id="order-items-builder" class="order-items-builder">
+            <!-- Dynamic rows of dish selection -->
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-add-item-row" style="margin-top: 8px;">
+            ➕ Thêm món khác
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label for="order-note">Ghi chú (tuỳ chọn)</label>
+          <input type="text" id="order-note" class="form-control" placeholder="Ví dụ: Không hành, ít cay...">
+        </div>
+
+        <div class="order-total-preview">
+          <span>Tổng tiền dự kiến:</span>
+          <span class="total-amount" id="order-preview-total">0 ₫</span>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-modal-order">Hủy</button>
+          <button type="submit" class="btn btn-primary">Xác Nhận Tạo Đơn</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: THÊM BÀN ĂN -->
+  <div class="modal" id="modal-table">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Thêm Bàn Ăn Mới</h3>
+        <button class="btn-close" id="btn-close-modal-table">&times;</button>
+      </div>
+      <form id="form-create-table">
+        <div class="form-group">
+          <label for="table-number-input">Tên / Số bàn *</label>
+          <input type="text" id="table-number-input" class="form-control" placeholder="Ví dụ: Bàn 06, VIP 2..." required>
+        </div>
+        <div class="form-group">
+          <label for="table-capacity-input">Sức chứa (Số người)</label>
+          <input type="number" id="table-capacity-input" class="form-control" min="1" max="50" value="4" required>
+        </div>
+        <div class="form-group">
+          <label for="table-status-input">Trạng thái khởi tạo</label>
+          <select id="table-status-input" class="form-control">
+            <option value="available">Bàn trống (Available)</option>
+            <option value="occupied">Đang có khách (Occupied)</option>
+            <option value="reserved">Đã đặt trước (Reserved)</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-modal-table">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu Bàn Ăn</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: THÊM/SỬA MÓN ĂN -->
+  <div class="modal" id="modal-dish">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-dish-title">Thêm Món Ăn Mới</h3>
+        <button class="btn-close" id="btn-close-modal-dish">&times;</button>
+      </div>
+      <form id="form-dish">
+        <input type="hidden" id="dish-id-input">
+        <div class="form-group">
+          <label for="dish-name-input">Tên món ăn *</label>
+          <input type="text" id="dish-name-input" class="form-control" placeholder="Ví dụ: Phở Bò Tái Nạm..." required>
+        </div>
+        <div class="form-group">
+          <label for="dish-category-input">Danh mục</label>
+          <select id="dish-category-input" class="form-control">
+            <option value="Món chính">Món chính</option>
+            <option value="Khai vị">Khai vị</option>
+            <option value="Đồ uống">Đồ uống</option>
+            <option value="Tráng miệng">Tráng miệng</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="dish-price-input">Đơn giá (VNĐ) *</label>
+          <input type="number" id="dish-price-input" class="form-control" min="0" step="1000" placeholder="Ví dụ: 65000" required>
+        </div>
+        <div class="form-group">
+          <label for="dish-available-input">Trạng thái phục vụ</label>
+          <select id="dish-available-input" class="form-control">
+            <option value="true">Đang phục vụ</option>
+            <option value="false">Tạm hết món</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-modal-dish">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu Món Ăn</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
