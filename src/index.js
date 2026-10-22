@@ -4,6 +4,7 @@ const path = require('path');
 require('dotenv').config();
 
 const { initDatabase } = require('./initDb');
+const { register, metricsMiddleware, updateBusinessMetrics } = require('./metrics');
 const dishesRouter = require('./routes/dishes');
 const tablesRouter = require('./routes/tables');
 const ordersRouter = require('./routes/orders');
@@ -16,6 +17,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Metrics middleware (ghi nhận số lượng request, thời gian xử lý, mã phản hồi)
+app.use(metricsMiddleware);
+
 // Phục vụ giao diện tĩnh
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -26,6 +30,18 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'NhaHang Management System',
   });
+});
+
+// Endpoint phục vụ Prometheus scrape metrics
+app.get('/metrics', async (req, res) => {
+  try {
+    await updateBusinessMetrics();
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    console.error('Lỗi khi xuất metrics:', error);
+    res.status(500).end(error.message);
+  }
 });
 
 // API Routes

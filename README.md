@@ -5,140 +5,149 @@ Repository GitHub: [https://github.com/nguyenxuanhuong20706-droid/maison-xuan-re
 
 ---
 
-## 1. Kiến Trúc Hệ Thống (Giai Đoạn 2 — Nginx Reverse Proxy & SSL)
+## 1. Kiến Trúc Hệ Thống (Giai Đoạn 3 — Prometheus & Grafana Monitoring)
 
-Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng `Docker Compose`, bao gồm 4 dịch vụ hoạt động độc lập trên mạng nội bộ `nhahang_net`:
+Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng `Docker Compose`, bao gồm **8 container dịch vụ** hoạt động đồng bộ và bảo mật trên mạng nội bộ `nhahang_net`:
 
 ```
-+-----------------------------------------------------------------------------------------+
-|                                      Host Machine                                       |
-|                                                                                         |
-|   [Port 8088 (HTTP)]     [Port 8443 (HTTPS)]            [Port 5433]       [Port 5050]   |
-|           │                      │                           │                 │        |
-+-----------┼──────────────────────┼───────────────────────────┼─────────────────┼--------+
-            │                      │                           │                 │
-            ▼                      ▼                           │                 │
-    +──────────────────────────────────────+                   │                 │
-    |            nhahang_nginx             |                   │                 │
-    |    (Nginx Reverse Proxy & SSL)       |                   │                 │
-    |       Ports: 80 (HTTP), 443 (HTTPS)  |                   │                 │
-    +──────────────────┬───────────────────+                   │                 │
-                       │ proxy_pass                            │                 │
-                       ▼                                       ▼                 ▼
-            +────────────────────+                   +─────────────────+  +──────────────+
-            |    nhahang_web     | ───────SQL───────>| nhahang_postgres|  |nhahang_pgadmin|
-            |  (Node.js Express) |                   | (PostgreSQL 16) |<─| (pgAdmin 4)  |
-            |    Port: 5000      |                   |   Port: 5432    |  |  Port: 80    |
-            +────────────────────+                   +─────────────────+  +──────────────+
-                       │                                       │                 │
-                       +───────────────────────────────────────┴─────────────────+
-                                    Mạng nội bộ Docker (nhahang_net)
++-----------------------------------------------------------------------------------------------------------------------+
+|                                                      Host Machine                                                     |
+|                                                                                                                       |
+|   [Port 8088]   [Port 8443]       [Port 9091]      [Port 3001]        [Port 5050]       [Port 5433]       [Port 5000] |
+|     (HTTP)        (HTTPS)         (Prometheus)      (Grafana)          (pgAdmin)         (Postgres)        (Internal) |
+|        │             │                 │                │                  │                 │                  │     |
++--------┼─────────────┼─────────────────┼────────────────┼──────────────────┼─────────────────┼──────────────────┼-----+
+         │             │                 │                │                  │                 │                  │
+         ▼             ▼                 │                │                  │                 │                  │
+    +──────────────────────────+         │                │                  │                 │                  │
+    |      nhahang_nginx       |         │                │                  │                 │                  │
+    |  (Nginx Gateway & SSL)   |         │                │                  │                 │                  │
+    +────────────┬─────────────+         │                │                  │                 │                  │
+                 │ proxy_pass            │                │                  │                 │                  │
+                 ▼                       │                ▼                  │                 │                  │
+    +──────────────────────────+         │    +───────────────────────+      │                 │                  │
+    |       nhahang_web        |         │    |    nhahang_grafana    |      │                 │                  │
+    |    (Node.js Express)     |         │    | (Dashboard Trực quan) |      │                 │                  │
+    |  Endpoint: /metrics      |         │    +───────────┬───────────+      │                 │                  │
+    +────────────┬─────────────+         │                │ PromQL query     │                 │                  │
+                 │                       ▼                ▼                  │                 │                  │
+                 │            +──────────────────────────────────────+       │                 │                  │
+                 │            |          nhahang_prometheus          |       │                 │                  │
+                 │            |   (Thu thập & Lưu trữ Time-Series)   |       │                 │                  │
+                 │            +───────┬──────────────┬───────────────+       │                 │                  │
+                 │                    │ scrape       │ scrape                │                 │                  │
+                 ▼                    ▼              ▼                       ▼                 ▼                  │
+    +──────────────────────────+ +──────────────+ +─────────────────────+ +──────────────+ +─────────────────────+    │
+    |   nhahang_nginx_exporter | | (nhahang_web)| |  postgres_exporter  | |nhahang_pgadmin| |  nhahang_postgres   |    │
+    |    (Cổng 9113 nội bộ)    | | (Cổng 5000)  | | (Cổng 9187 nội bộ)  | |  (pgAdmin 4) | | (PostgreSQL 16 DB)   |<───┘
+    +──────────────────────────+ +──────────────+ +──────────┬──────────+ +──────────────+ +─────────────────────+
+                                                             │ SQL metrics                         ▲
+                                                             └─────────────────────────────────────┘
+                                           Mạng nội bộ Docker (nhahang_net)
 ```
 
-### Bảng Ánh Xạ Cổng & Điểm Truy Cập
+### Bảng Ánh Xạ Cổng & Điểm Truy Cập Toàn Hệ Thống
+
 | Dịch vụ | Container Name | Cổng Container | Cổng Host (Windows) | Điểm truy cập / Mục đích |
 |---|---|---|---|---|
 | **Nginx HTTP Gateway** | `nhahang_nginx` | `80` | **`8088`** | [http://localhost:8088](http://localhost:8088) — Reverse Proxy chính thức |
 | **Nginx HTTPS Gateway** | `nhahang_nginx` | `443` | **`8443`** | [https://localhost:8443](https://localhost:8443) — Kết nối mã hóa SSL tự ký |
-| **Backend Web App** | `nhahang_web` | `5000` | **`5000`** | [http://localhost:5000](http://localhost:5000) — Node.js trực tiếp (Internal) |
+| **Grafana Dashboard** | `nhahang_grafana` | `3000` | **`3001`** | [http://localhost:3001](http://localhost:3001) — Trực quan hóa hiệu năng & số liệu nghiệp vụ |
+| **Prometheus Server** | `nhahang_prometheus` | `9090` | **`9091`** | [http://localhost:9091](http://localhost:9091) — Quản lý Targets & Tra cứu PromQL |
+| **Backend Web App** | `nhahang_web` | `5000` | **`5000`** | [http://localhost:5000](http://localhost:5000) — Node.js Express (Metrics: `/metrics`) |
 | **PostgreSQL Database** | `nhahang_postgres` | `5432` | **`5433`** | Host port `5433` (tránh xung đột PostgreSQL Windows cổng 5432) |
 | **pgAdmin 4 Quản trị** | `nhahang_pgadmin` | `80` | **`5050`** | [http://localhost:5050](http://localhost:5050) — Quản lý cơ sở dữ liệu qua giao diện |
+| **Postgres Exporter** | `nhahang_postgres_exporter`| `9187` | *Nội bộ* | Thu thập metrics kết nối & giao dịch PostgreSQL |
+| **Nginx Exporter** | `nhahang_nginx_exporter` | `9113` | *Nội bộ* | Thu thập metrics kết nối & request từ Nginx `stub_status` |
 
 > [!NOTE]
-> Tất cả các cổng host được lựa chọn cẩn thận để **tuyệt đối không xung đột** với các container thực hành cũ đang chạy trên máy (`mysql`, `wordpress` - port 8080, `grafana` - port 3000, `loki` - port 3100).
+> Cổng **`9091`** và **`3001`** được lựa chọn độc lập để **tuyệt đối không xung đột** với bất kỳ dịch vụ hay bài thực hành cũ nào trên máy (như WordPress port 8080, Grafana port 3000, Loki port 3100).
 
 ---
 
 ## 2. Các Tính Năng Đã Triển Khai
 
-1. **Quản lý Món ăn (Thực đơn)**:
-   - Thêm món mới (Tên, danh mục, đơn giá VNĐ, trạng thái).
-   - Xem danh sách món ăn, tìm kiếm theo tên và lọc theo danh mục.
-   - Sửa thông tin món ăn, cập nhật trạng thái phục vụ.
-   - Xóa món ăn (nếu món đã từng phát sinh đơn hàng, hệ thống tự động chuyển trạng thái sang "Tạm hết món" để bảo toàn lịch sử dữ liệu).
+1. **Quản lý Nghiệp vụ Nhà hàng (Giai đoạn 1)**:
+   - Quản lý Thực đơn (CRUD món ăn, tự động khóa món đã từng có trong hóa đơn để toàn vẹn dữ liệu).
+   - Quản lý Bàn ăn (thêm bàn, đổi trạng thái: Bàn trống, Có khách, Đặt trước).
+   - Quản lý Đơn hàng (tạo đơn, tính tổng tiền tự động, chuyển đổi trạng thái phục vụ và thanh toán).
 
-2. **Quản lý Bàn ăn**:
-   - Thêm bàn mới (Số/tên bàn, sức chứa khách, trạng thái khởi tạo).
-   - Xem danh sách và thẻ trạng thái trực quan: Bàn trống, Có khách, Đã đặt.
-   - Cập nhật trạng thái bàn ăn tức thì.
+2. **Nginx Reverse Proxy & SSL (Giai đoạn 2)**:
+   - Cổng vào duy nhất tiếp nhận HTTP (8088) và HTTPS (8443).
+   - Tích hợp 4 HTTP Security Headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy`.
+   - Cơ chế SSL tự ký tự động tạo bằng Docker OpenSSL.
 
-3. **Quản lý Đơn hàng (Gọi món & Thanh toán)**:
-   - Tạo đơn hàng mới: Chọn bàn ăn, chọn một hoặc nhiều món cùng số lượng.
-   - Tự động tính tổng tiền từ dữ liệu thực tế trong PostgreSQL.
-   - Tự động cập nhật bàn sang trạng thái "Đang có khách" (`occupied`).
-   - Cập nhật quy trình phục vụ: `Chờ xử lý` -> `Đang phục vụ` -> `Thanh toán/Hoàn thành` -> `Hủy đơn`.
-   - Khi thanh toán hoặc hủy đơn, bàn tự động được trả về trạng thái `Bàn trống` (`available`).
-
-4. **Nginx Reverse Proxy & Bảo Mật (Giai Đoạn 2)**:
-   - **Reverse Proxy**: Làm cổng vào duy nhất, chuyển tiếp request từ client vào `nhahang_web` thông qua mạng nội bộ Docker.
-   - **SSL/TLS Termination**: Hỗ trợ kết nối bảo mật HTTPS tại cổng `8443` với chứng chỉ SSL tự ký.
-   - **HTTP Security Headers**:
-     - `X-Content-Type-Options: nosniff`: Ngăn chặn trình duyệt đoán mò kiểu MIME (MIME-sniffing).
-     - `X-Frame-Options: SAMEORIGIN`: Chống tấn công Clickjacking bằng cách ngăn nhúng website vào iframe từ domain lạ.
-     - `Referrer-Policy: strict-origin-when-cross-origin`: Bảo vệ thông tin nguồn gốc truy cập.
-     - `Content-Security-Policy`: Kiểm soát nguồn tải tài nguyên (scripts, styles từ chính host và Google Fonts).
-   - **Proxy Headers**: Truyền đầy đủ `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`.
-   - **Quản lý Log**: Tách riêng access log và error log (kèm volume `nhahang_nginx_logs`) sẵn sàng cho việc gom log bằng Promtail/Loki.
+3. **Giám Sát Hệ Thống Thời Gian Thực (Giai đoạn 3 — MỚI)**:
+   - **Metrics Express (`prom-client`)**: Tự động đo lường:
+     - Lưu lượng HTTP (`nhahang_http_requests_total`) theo phương thức, route và status code.
+     - Thời gian phản hồi (`nhahang_http_request_duration_seconds`) theo phân bố Histogram (tính P50, P95 Latency).
+     - Số lượng request active (`nhahang_http_requests_active`).
+     - Số liệu runtime Node.js (CPU, RSS Memory, Used Heap, Event loop lag, GC).
+     - Số liệu nghiệp vụ nhà hàng sống từ DB: Tổng món ăn, số bàn theo trạng thái, số đơn theo trạng thái.
+   - **Postgres Exporter**: Số kết nối hoạt động (`pg_stat_activity_count`), số commit/rollback giao dịch.
+   - **Nginx Exporter**: Kết nối đang hoạt động và tổng request xử lý qua Nginx.
+   - **Prometheus Scrape**: Cấu hình 4 targets chu kỳ 5 giây, tất cả 4 targets đều ở trạng thái `UP`.
+   - **Grafana Dashboard Tự Động**: Nạp sẵn qua cơ chế Provisioning, giao diện trực quan 3 hàng gồm Tổng quan trạng thái, Hiệu năng Web App và Cơ sở dữ liệu/Nginx.
 
 ---
 
 ## 3. Hướng Dẫn Khởi Chạy
 
 ### Bước 1: Chuẩn bị tệp cấu hình `.env`
-Đảm bảo tệp `.env` đã được cấu hình:
 ```bash
 cp .env.example .env
 ```
+*(Nếu đã có tệp `.env`, giữ nguyên các cấu hình hiện tại)*
 
 ### Bước 2: Sinh chứng chỉ SSL tự ký (Nếu triển khai trên máy mới)
-Nếu chưa có thư mục `nginx/ssl/`, chạy lệnh sau (sử dụng Docker để sinh không cần cài OpenSSL trên máy):
 ```powershell
 docker run --rm -v "${PWD}/nginx/ssl:/certs" alpine sh -c "apk add --no-cache openssl && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/selfsigned.key -out /certs/selfsigned.crt -subj '/C=VN/ST=Hanoi/L=Hanoi/O=MaisonXuan/OU=IT/CN=localhost'"
 ```
 
-### Bước 3: Khởi chạy các container
+### Bước 3: Khởi chạy toàn bộ hệ thống bằng Docker Compose
 ```bash
 docker compose up -d --build
 ```
 
-### Bước 4: Kiểm tra trạng thái
+### Bước 4: Kiểm tra trạng thái các container
 ```bash
 docker compose ps
 ```
-Cả 4 container (`nhahang_nginx`, `nhahang_web`, `nhahang_postgres`, `nhahang_pgadmin`) phải ở trạng thái `Up` hoặc `healthy`.
+Cả 8 container phải ở trạng thái `Up` hoặc `healthy`.
 
 ---
 
-## 4. Hướng Dẫn Kiểm Thử
+## 4. Hướng Dẫn Kiểm Thử & Demo
 
-### 1. Truy cập qua Nginx Reverse Proxy
-- **HTTP**: [http://localhost:8088](http://localhost:8088)
-- **HTTPS**: [https://localhost:8443](https://localhost:8443) *(Khi trình duyệt cảnh báo chứng chỉ tự ký, bấm Advanced -> Proceed to localhost)*
-- **Health Check API**: [http://localhost:8088/health](http://localhost:8088/health) hoặc [https://localhost:8443/health](https://localhost:8443/health)
+### 1. Kiểm tra Giám sát trên Prometheus
+- URL: [http://localhost:9091/targets](http://localhost:9091/targets)
+- Xác nhận **4/4 targets** (`nhahang_web`, `nhahang_postgres`, `nhahang_nginx`, `prometheus`) đều hiển thị nhãn xanh **`UP`**.
+- Thử tra cứu các câu lệnh PromQL:
+  ```promql
+  nhahang_dishes_total
+  sum(rate(nhahang_http_requests_total[1m])) by (status_code)
+  pg_stat_activity_count
+  ```
 
-### 2. Kiểm tra cú pháp Nginx
-```bash
-docker exec nhahang_nginx nginx -t
-```
-*Kết quả chuẩn: `nginx.conf syntax is ok` và `test is successful`.*
-
-### 3. Kiểm tra Security Headers bằng cURL
-```bash
-curl.exe -I http://localhost:8088/
-curl.exe -k -I https://localhost:8443/
-```
-*Xác nhận có đủ các header: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy`.*
-
-### 4. Truy cập giao diện Quản trị pgAdmin 4
-- URL: [http://localhost:5050](http://localhost:5050)
+### 2. Kiểm tra Dashboard Trực Quan trên Grafana
+- URL: [http://localhost:3001/d/maison-xuan-overview](http://localhost:3001/d/maison-xuan-overview)
 - **Tài khoản đăng nhập**:
-  - Email: `admin@example.com`
-  - Mật khẩu: Thông tin cấu hình trong `.env`
-- **Kết nối đến PostgreSQL**:
-  - Host: `db`
-  - Port: `5432`
-  - Database: `nhahang_db`
-  - Username: `nhahang_user`
+  - Username: `admin`
+  - Mật khẩu: Thông tin trong `.env` (`Admin@NhaHang2026`)
+- Dashboard **Maison Xuan — Giám Sát Hiệu Năng & Nghiệp Vụ Toàn Diện** hiển thị đầy đủ các biểu đồ với số liệu sống từ hệ thống.
+
+### 3. Tạo Tải Thực Tế Để Quan Sát Biểu Đồ Nhảy Số
+Chạy lệnh curl trong PowerShell để gửi 20 request qua cổng HTTPS của Nginx:
+```powershell
+1..20 | ForEach-Object { curl.exe -k -s https://localhost:8443/api/dishes > $null }
+```
+Quan sát trên Grafana Dashboard: Biểu đồ **Lưu Lượng Yêu Cầu HTTP** và **Nginx Requests / Giây** sẽ lập tức nhảy số tăng tương ứng.
+
+### 4. Truy Cập Website Nhà Hàng
+- **HTTPS Gateway**: [https://localhost:8443](https://localhost:8443) *(Khuyên dùng)*
+- **HTTP Gateway**: [http://localhost:8088](http://localhost:8088)
+- **Endpoint Metrics thô**: [http://localhost:5000/metrics](http://localhost:5000/metrics)
+- **Health Check API**: [https://localhost:8443/health](https://localhost:8443/health)
 
 ---
 
@@ -146,4 +155,4 @@ curl.exe -k -I https://localhost:8443/
 ```bash
 docker compose down
 ```
-*(Lưu ý: Dữ liệu món ăn, bàn ăn, đơn hàng vẫn được lưu an toàn trong Docker Volume `nhahang_pgdata`)*
+*(Lưu ý: Dữ liệu PostgreSQL, Prometheus TSDB và cấu hình Grafana được bảo toàn trong các Docker Volume named)*
