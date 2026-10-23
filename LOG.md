@@ -97,50 +97,47 @@ C:\Users\HUONG\Documents\NhaHang\
 
 | STT | Tiêu chí đánh giá bài thi | Trạng thái | Chi tiết hiện trạng thực tế |
 |---|---|---|---|
-| 1 | **GitHub & Quản lý phiên bản (Tối thiểu 3 commit)** | 🔄 **Đạt 2/3 commit** | Đã có Commit 1 (`179656d`), Commit 2 (`5564b43`). Chuẩn bị cho **Commit 3 (Giai đoạn 3)**. |
+| 1 | **GitHub & Quản lý phiên bản (Tối thiểu 3 commit)** | 🔄 **Đạt 2/3 commit** | Đã có Commit 1 (`179656d`), Commit 2 (`5564b43`). Chuẩn bị commit cho Giai đoạn 3 & 4. |
 | 2 | **Ứng dụng Web & Database (Docker Compose)** | ✅ **Đạt** | Chạy ổn định trên Docker Compose, 4 bảng dữ liệu trong PostgreSQL, 13 món ăn lưu bền vững. |
 | 3 | **Nginx Reverse Proxy & SSL Gateway** | ✅ **Đạt** | Nginx Alpine làm Reverse Proxy, HTTP cổng 8088, HTTPS cổng 8443, đầy đủ 4 Security Headers. |
 | 4 | **Giám sát hệ thống (Prometheus & Grafana)** | ✅ **Đạt xuất sắc** | Prometheus (9091) scrape 4/4 targets `UP`. Grafana (3001) nạp sẵn Dashboard đo lường đầy đủ Web App, DB, Nginx và nghiệp vụ nhà hàng. |
-| 5 | **Thu thập Log (Loki & Promtail)** | ⏳ **Chưa làm** | Sẽ triển khai riêng ở Giai đoạn 4. |
-| 6 | **Bảo mật cơ bản & Nâng cao** | ✅ **Đạt phần lớn** | `.env` tách biệt, chống SQL Injection, SSL/TLS tự ký, 4 HTTP Security Headers, cấm truy cập stub_status từ ngoài. |
-| 7 | **Báo cáo (>= 10 trang) & Demo** | ⏳ **Chưa làm** | Soạn thảo ở giai đoạn cuối sau khi hoàn thiện toàn bộ tính năng. |
+| 5 | **Thu thập Log (Loki & Promtail)** | ✅ **Đạt xuất sắc** | Loki 3.0 (3101) & Promtail thu thập log tập trung từ Express, Nginx (access/error) và PostgreSQL. Datasource Loki tích hợp vào Grafana (3001). Đã kiểm thử 3 LogQL trả về kết quả thực tế. |
+| 6 | **Bảo mật cơ bản & Nâng cao** | ✅ **Đạt** | `.env` tách biệt, chống SQL Injection, SSL/TLS tự ký, 4 HTTP Security Headers, cấm truy cập stub_status từ ngoài, đổi mật khẩu an toàn. |
+| 7 | **Báo cáo (>= 10 trang) & Demo** | ⏳ **Chưa làm** | Chuẩn bị soạn thảo ở giai đoạn 5 hoàn thiện. |
 
 ---
 
-## ✅ PHẦN 4: CÁC KẾT QUẢ ĐÃ KIỂM CHỨNG THỰC TẾ (GIAI ĐOẠN 3)
+## ✅ PHẦN 4: CÁC KẾT QUẢ ĐÃ KIỂM CHỨNG THỰC TẾ (GIAI ĐOẠN 3 & GIAI ĐOẠN 4)
 
-1. **Kiểm tra trạng thái cụm 8 container (`docker compose ps`):**
-   - Cả 8 container (`nhahang_nginx`, `nhahang_web`, `nhahang_postgres`, `nhahang_pgadmin`, `nhahang_postgres_exporter`, `nhahang_nginx_exporter`, `nhahang_prometheus`, `nhahang_grafana`) đều đang hoạt động `Up` hoặc `healthy`.
+1. **Kiểm tra trạng thái cụm 10 container (`docker compose ps`):**
+   - Cả 10 container (`nhahang_nginx`, `nhahang_web`, `nhahang_postgres`, `nhahang_pgadmin`, `nhahang_postgres_exporter`, `nhahang_nginx_exporter`, `nhahang_prometheus`, `nhahang_grafana`, `nhahang_loki`, `nhahang_promtail`) đều đang hoạt động `Up` hoặc `healthy`.
 2. **Kiểm tra Prometheus Targets (`http://localhost:9091/api/v1/targets`):**
-   - `nhahang_web` (`app:5000/metrics`): `UP` (Health: up, lastError: "")
-   - `nhahang_postgres` (`postgres_exporter:9187/metrics`): `UP` (Health: up, lastError: "")
-   - `nhahang_nginx` (`nginx_exporter:9113/metrics`): `UP` (Health: up, lastError: "")
-   - `prometheus` (`localhost:9090/metrics`): `UP` (Health: up, lastError: "")
-3. **Kiểm tra Grafana Provisioning & Dashboard:**
-   - Datasource Prometheus được tự động cấu hình và kết nối thành công.
-   - Dashboard `maison-xuan-overview` được tự động nạp vào thư mục "Maison Xuan", truy cập tại [http://localhost:3001/d/maison-xuan-overview](http://localhost:3001/d/maison-xuan-overview).
-4. **Kiểm tra đo lường số liệu thực tế:**
-   - Chỉ số món ăn thực tế: `nhahang_dishes_total = 13` (khớp 100% cơ sở dữ liệu).
-   - Chỉ số bàn ăn thực tế: `available = 2, occupied = 1, reserved = 3`.
-   - Lưu lượng HTTP qua Nginx: Ghi nhận chính xác số request tăng khi curl vào API.
-   - Độ trễ phản hồi (P95, P50 latency) được ghi nhận chính xác theo thời gian thực.
-5. **Kiểm tra tính an toàn của mã nguồn Git:**
-   - `.env` và chứng chỉ SSL bí mật không bị đưa lên Git.
-   - `.env.example` đã được cập nhật giá trị mẫu.
-   - Chưa thực hiện commit hoặc push theo đúng yêu cầu của người dùng.
+   - Scrape 4/4 targets `UP`: `nhahang_web`, `nhahang_postgres`, `nhahang_nginx`, `prometheus`.
+3. **Kiểm tra Grafana Provisioning (Datasources & Dashboards):**
+   - Datasource **Prometheus** (`http://nhahang_prometheus:9090`) và **Loki** (`http://loki:3100`) đều tự động cấu hình và kết nối thành công.
+   - Dashboard `maison-xuan-overview` được nạp sẵn tại [http://localhost:3001/d/maison-xuan-overview](http://localhost:3001/d/maison-xuan-overview).
+4. **Kiểm tra Loki Ingestion & 3 câu truy vấn LogQL thực tế:**
+   - **LogQL 1 (Express App):** `{service="nhahang_web"}` — Ghi nhận log request chuẩn cấu trúc ISO timestamp, HTTP method, URL, status code, latency.
+   - **LogQL 2 (Nginx Gateway):** `{service="nhahang_nginx"}` — Ghi nhận access log HTTP/HTTPS và error log từ volume chia sẻ `/var/log/nginx/*_*.log`.
+   - **LogQL 3 (Cảnh báo & Lỗi 4xx/5xx):** `{service="nhahang_web"} |= "WARN"` hoặc `{service=~"nhahang_web|nhahang_nginx"} |~ "404|500|WARN|ERROR"` — Bắt chính xác các request gọi endpoint không tồn tại (HTTP 404).
+5. **Kiểm tra bảo mật và dữ liệu:**
+   - 13 món ăn và cấu hình nghiệp vụ trong `nhahang_pgdata` được bảo toàn nguyên vẹn.
+   - Mật khẩu và token không bị xuất hiện trong log hoặc commit Git.
 
 ---
 
-## 📋 PHẦN 5: DANH SÁCH CÔNG VIỆC TIẾP THEO
+## 📋 PHẦN 5: DANH SÁCH CÔNG VIỆC TIẾP THEO (GIAI ĐOẠN 5)
 
-1. **Bước 1 (Người dùng thực hiện):** Kiểm tra lại giao diện website, Prometheus và Grafana trên trình duyệt.
-2. **Bước 2 (Thực hiện Commit 3):**
+1. **Bước 1 (Người dùng kiểm tra):** Truy cập Grafana Explore [http://localhost:3001/explore](http://localhost:3001/explore) kiểm tra Loki datasource và chạy thử 3 câu truy vấn LogQL.
+2. **Bước 2 (Xem xét cAdvisor theo yêu cầu đề thi):**
+   - Hiện tại hệ thống đã có Node.js runtime metrics (`process_cpu_user_seconds_total`, `nodejs_heap_size_total_bytes`) và PostgreSQL DB metrics.
+   - Đề xuất bổ sung dịch vụ `cadvisor` (container `nhahang_cadvisor`, host port `8085`) để thu thập thông số CPU/RAM cgroup của từng container riêng biệt theo chuẩn đề thi.
+3. **Bước 3 (Thực hiện Commit):**
    ```bash
    git add .
-   git commit -m "feat: tich hop Prometheus va Grafana monitoring kem postgres va nginx exporter"
+   git commit -m "feat: tich hop Loki va Promtail centralized logging kem Grafana Loki datasource"
    git push origin main
    ```
-3. **Bước 3 (Giai đoạn 4 — Logging & Báo cáo):**
-   - Triển khai Loki và Promtail gom log từ Nginx và Web App (chọn cổng tránh xung đột với Loki cũ cổng 3100).
-   - Tinh chỉnh nhận diện thương hiệu Maison Xuan (2006).
-   - Soạn thảo báo cáo kỹ thuật tối thiểu 10 trang kèm hình ảnh minh chứng.
+4. **Bước 4 (Soạn báo cáo hoàn chỉnh & Vấn đáp):**
+   - Tạo tài liệu báo cáo kỹ thuật tổng hợp toàn bộ 5 giai đoạn (>= 10 trang, kèm ảnh chụp).
+   - Chuẩn bị kịch bản demo trực tiếp cho giảng viên.

@@ -146,6 +146,37 @@ services:
       - nhahang_grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+      - loki
+    networks:
+      - nhahang_net
+
+  # 9. Loki Centralized Log Storage (Cổng host: 3101)
+  loki:
+    image: grafana/loki:latest
+    container_name: nhahang_loki
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT_LOKI:-3101}:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - nhahang_loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - nhahang_net
+
+  # 10. Promtail Log Collector & Shipper
+  promtail:
+    image: grafana/promtail:latest
+    container_name: nhahang_promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - nhahang_nginx_logs:/var/log/nginx:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
     networks:
       - nhahang_net
 
@@ -160,6 +191,8 @@ volumes:
     name: nhahang_prometheus_data
   nhahang_grafana_data:
     name: nhahang_grafana_data
+  nhahang_loki_data:
+    name: nhahang_loki_data
 
 networks:
   nhahang_net:

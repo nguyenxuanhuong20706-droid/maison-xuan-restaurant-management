@@ -20,6 +20,20 @@ app.use(express.urlencoded({ extended: true }));
 // Metrics middleware (ghi nhận số lượng request, thời gian xử lý, mã phản hồi)
 app.use(metricsMiddleware);
 
+// Request logging middleware cho Centralized Logging (Loki & Promtail)
+app.use((req, res, next) => {
+  if (req.path === '/health' || req.path === '/metrics') {
+    return next();
+  }
+  const startTime = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    const level = res.statusCode >= 500 ? 'ERROR' : (res.statusCode >= 400 ? 'WARN' : 'INFO');
+    console.log(`[${new Date().toISOString()}] [${level}] [nhahang_web] ${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${duration}ms - IP: ${req.ip || req.socket.remoteAddress}`);
+  });
+  next();
+});
+
 // Phục vụ giao diện tĩnh
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -48,6 +62,15 @@ app.get('/metrics', async (req, res) => {
 app.use('/api/dishes', dishesRouter);
 app.use('/api/tables', tablesRouter);
 app.use('/api/orders', ordersRouter);
+
+// 404 Handler cho các API route không tồn tại (phục vụ kiểm thử và giám sát lỗi 4xx)
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint API khong ton tai',
+    method: req.method,
+    path: req.originalUrl,
+  });
+});
 
 // Fallback route cho Single Page UI
 app.get('*', (req, res) => {

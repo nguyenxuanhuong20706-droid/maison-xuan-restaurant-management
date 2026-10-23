@@ -1,0 +1,40 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # 1. Thu thập trực tiếp file log Nginx từ volume nhahang_nginx_logs
+  - job_name: nhahang_nginx_files
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nhahang_nginx
+          service: nhahang_nginx
+          container: nhahang_nginx
+          __path__: /var/log/nginx/*_*.log
+
+  # 2. Thu thập trực tiếp stdout/stderr của tất cả container dự án Nhà Hàng qua Docker socket
+  - job_name: nhahang_containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ['nhahang_.*']
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'service'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
