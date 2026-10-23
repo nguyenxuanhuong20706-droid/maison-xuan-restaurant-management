@@ -1,11 +1,13 @@
 services:
-  # 1. Cơ sở dữ liệu PostgreSQL
+  # 1. Cơ sở dữ liệu PostgreSQL (Tầng Backend - Network Cô lập nhahang_backend_net)
   db:
     image: postgres:16-alpine
     container_name: nhahang_postgres
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "${HOST_PORT_DB:-5433}:5432"
+      - "127.0.0.1:${HOST_PORT_DB:-5433}:5432"
     environment:
       POSTGRES_DB: ${DB_NAME:-nhahang_db}
       POSTGRES_USER: ${DB_USER:-nhahang_user}
@@ -13,22 +15,25 @@ services:
     volumes:
       - nhahang_pgdata:/var/lib/postgresql/data
     networks:
-      - nhahang_net
+      - nhahang_backend_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nhahang_user} -d ${DB_NAME:-nhahang_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # 2. Ứng dụng Quản lý Nhà hàng (Node.js Express)
+  # 2. Ứng dụng Quản lý Nhà hàng (Node.js Express - Chạy Non-root User 1000:1000)
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: nhahang_web
     restart: unless-stopped
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "${HOST_PORT_APP:-5000}:5000"
+      - "127.0.0.1:${HOST_PORT_APP:-5000}:5000"
     environment:
       PORT: 5000
       NODE_ENV: production
@@ -41,15 +46,17 @@ services:
       db:
         condition: service_healthy
     networks:
-      - nhahang_net
+      - nhahang_frontend_net
+      - nhahang_backend_net
+      - nhahang_monitoring_net
 
-  # 3. Giao diện quản trị PostgreSQL (pgAdmin 4)
+  # 3. Giao diện quản trị PostgreSQL (pgAdmin 4 - Tầng Backend)
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: nhahang_pgadmin
     restart: unless-stopped
     ports:
-      - "${HOST_PORT_PGADMIN:-5050}:80"
+      - "127.0.0.1:${HOST_PORT_PGADMIN:-5050}:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-Admin@NhaHang2026}
@@ -59,13 +66,16 @@ services:
       db:
         condition: service_healthy
     networks:
-      - nhahang_net
+      - nhahang_backend_net
 
-  # 4. Nginx Reverse Proxy & SSL Gateway
+
+  # 4. Nginx Reverse Proxy & SSL Gateway (Tầng Frontend & Monitoring)
   nginx:
     image: nginx:alpine
     container_name: nhahang_nginx
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "${HOST_PORT_HTTP:-8088}:80"
       - "${HOST_PORT_HTTPS:-8443}:443"
@@ -76,45 +86,53 @@ services:
     depends_on:
       - app
     networks:
-      - nhahang_net
+      - nhahang_frontend_net
+      - nhahang_monitoring_net
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
 
-  # 5. PostgreSQL Prometheus Exporter (Thu thập số liệu DB thực tế)
+  # 5. PostgreSQL Prometheus Exporter (Thu thập số liệu DB kết nối an toàn)
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: nhahang_postgres_exporter
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       DATA_SOURCE_NAME: "postgresql://${DB_USER:-nhahang_user}:${DB_PASSWORD:-nhahang_password_2026}@db:5432/${DB_NAME:-nhahang_db}?sslmode=disable"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - nhahang_net
+      - nhahang_backend_net
+      - nhahang_monitoring_net
 
-  # 6. Nginx Prometheus Exporter (Thu thập số liệu Nginx qua stub_status)
+  # 6. Nginx Prometheus Exporter (Thu thập số liệu Nginx qua mạng nội bộ)
   nginx_exporter:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nhahang_nginx_exporter
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     command:
       - -nginx.scrape-uri=http://nginx:80/stub_status
     depends_on:
       - nginx
     networks:
-      - nhahang_net
+      - nhahang_monitoring_net
 
-  # 7. Prometheus Monitoring Server (Cổng host: 9091)
+  # 7. Prometheus Monitoring Server (Tầng Monitoring - Cổng Host 9091 bind 127.0.0.1)
   prometheus:
     image: prom/prometheus:latest
     container_name: nhahang_prometheus
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "${HOST_PORT_PROMETHEUS:-9091}:9090"
+      - "127.0.0.1:${HOST_PORT_PROMETHEUS:-9091}:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - nhahang_prometheus_data:/prometheus
@@ -127,15 +145,17 @@ services:
       - postgres_exporter
       - nginx_exporter
     networks:
-      - nhahang_net
+      - nhahang_monitoring_net
 
-  # 8. Grafana Dashboard & Trực quan hóa (Cổng host: 3001)
+  # 8. Grafana Dashboard & Trực quan hóa (Tầng Monitoring - Cổng Host 3001 bind 127.0.0.1)
   grafana:
     image: grafana/grafana:latest
     container_name: nhahang_grafana
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "${HOST_PORT_GRAFANA:-3001}:3000"
+      - "127.0.0.1:${HOST_PORT_GRAFANA:-3001}:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-Admin@NhaHang2026}
@@ -148,27 +168,31 @@ services:
       - prometheus
       - loki
     networks:
-      - nhahang_net
+      - nhahang_monitoring_net
 
-  # 9. Loki Centralized Log Storage (Cổng host: 3101)
+  # 9. Loki Centralized Log Storage (Tầng Monitoring - Cổng Host 3101 bind 127.0.0.1)
   loki:
     image: grafana/loki:latest
     container_name: nhahang_loki
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "${HOST_PORT_LOKI:-3101}:3100"
+      - "127.0.0.1:${HOST_PORT_LOKI:-3101}:3100"
     volumes:
       - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
       - nhahang_loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     networks:
-      - nhahang_net
+      - nhahang_monitoring_net
 
-  # 10. Promtail Log Collector & Shipper
+  # 10. Promtail Log Collector & Shipper (Tầng Monitoring)
   promtail:
     image: grafana/promtail:latest
     container_name: nhahang_promtail
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -178,7 +202,7 @@ services:
     depends_on:
       - loki
     networks:
-      - nhahang_net
+      - nhahang_monitoring_net
 
 volumes:
   nhahang_pgdata:
@@ -195,6 +219,12 @@ volumes:
     name: nhahang_loki_data
 
 networks:
-  nhahang_net:
-    name: nhahang_net
+  nhahang_frontend_net:
+    name: nhahang_frontend_net
+    driver: bridge
+  nhahang_backend_net:
+    name: nhahang_backend_net
+    driver: bridge
+  nhahang_monitoring_net:
+    name: nhahang_monitoring_net
     driver: bridge

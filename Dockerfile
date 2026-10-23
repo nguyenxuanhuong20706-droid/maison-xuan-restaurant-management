@@ -10,8 +10,11 @@ COPY package*.json ./
 # Cài đặt các thư viện sản xuất
 RUN npm install --omit=dev
 
-# Sao chép toàn bộ mã nguồn vào container
-COPY . .
+# Sao chép toàn bộ mã nguồn vào container và phân quyền cho người dùng node
+COPY --chown=node:node . .
+
+# Chuyển sang người dùng non-root 'node' (UID 1000) nhằm giảm thiểu đặc quyền bảo mật
+USER node
 
 # Khai báo cổng ứng dụng lắng nghe
 EXPOSE 5000

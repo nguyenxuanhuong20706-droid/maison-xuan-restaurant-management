@@ -5,18 +5,21 @@ Repository GitHub: [https://github.com/nguyenxuanhuong20706-droid/maison-xuan-re
 
 ---
 
-## 1. Kiến Trúc Hệ Thống (Giai Đoạn 4 — Centralized Logging & Monitoring)
+## 1. Kiến Trúc Hệ Thống (Giai Đoạn 5 — Security Hardening & Monitoring)
 
-Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng `Docker Compose`, bao gồm **10 container dịch vụ** hoạt động đồng bộ và bảo mật trên mạng nội bộ `nhahang_net`:
+Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng `Docker Compose`, bao gồm **10 container dịch vụ** hoạt động đồng bộ và bảo mật cao thông qua **3 mạng Docker phân tầng độc lập**:
+- `nhahang_frontend_net`: Tầng tiếp nhận Gateway & Reverse Proxy.
+- `nhahang_backend_net`: Tầng ứng dụng & cơ sở dữ liệu cô lập sâu.
+- `nhahang_monitoring_net`: Tầng giám sát metrics và thu thập log tập trung.
 
 ```
 +---------------------------------------------------------------------------------------------------------------------------------+
 |                                                           Host Machine                                                          |
 |                                                                                                                                 |
-|   [Port 8088]   [Port 8443]       [Port 9091]      [Port 3001]        [Port 3101]       [Port 5050]       [Port 5433]       [Port 5000] |
-|     (HTTP)        (HTTPS)         (Prometheus)      (Grafana)           (Loki)           (pgAdmin)         (Postgres)        (Internal) |
-|        │             │                 │                │                  │                 │                 │                  │     |
-+--------┼─────────────┼─────────────────┼────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼-----+
+|   [Port 8088]   [Port 8443]   [127.0.0.1:9091] [127.0.0.1:3001]   [127.0.0.1:3101]  [127.0.0.1:5050]  [127.0.0.1:5433]  [127.0.0.1:5000]|
+|     (HTTP)        (HTTPS)       (Prometheus)      (Grafana)           (Loki)           (pgAdmin)         (Postgres)        (Internal)   |
+|        │             │                 │                │                  │                 │                 │                  │       |
++--------┼─────────────┼─────────────────┼────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼-------+
          │             │                 │                │                  │                 │                 │                  │
          ▼             ▼                 │                │                  │                 │                 │                  │
     +──────────────────────────+         │                │                  │                 │                 │                  │
@@ -28,7 +31,7 @@ Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng
     +──────────────────────────+         │    +───────────────────────+      │                 │                 │                  │
     |       nhahang_web        |         │    |    nhahang_grafana    |      │                 │                 │                  │
     |    (Node.js Express)     |         │    | (Dashboard & Explore) |      │                 │                 │                  │
-    |  Metrics + Access Logger |         │    +───────┬───────┬───────+      │                 │                 │                  │
+    |  UID: 1000 (Non-root)    |         │    +───────┬───────┬───────+      │                 │                 │                  │
     +────────────┬─────────────+         │            │       │              │                 │                 │                  │
                  │                       ▼            │       │ LogQL query  │                 │                 │                  │
                  │            +────────────────────+  │       ▼              │                 │                 │                  │
@@ -50,7 +53,7 @@ Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng
                                             |     nhahang_promtail     |
                                             | (Docker & File Shipper)  |
                                             +──────────────────────────+
-                                           Mạng nội bộ Docker (nhahang_net)
+                                    Phân vùng 3 mạng Docker độc lập (3-Tier)
 ```
 
 ### Bảng Ánh Xạ Cổng & Điểm Truy Cập Toàn Hệ Thống
@@ -59,18 +62,18 @@ Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng
 |---|---|---|---|---|
 | **Nginx HTTP Gateway** | `nhahang_nginx` | `80` | **`8088`** | [http://localhost:8088](http://localhost:8088) — Reverse Proxy chính thức |
 | **Nginx HTTPS Gateway** | `nhahang_nginx` | `443` | **`8443`** | [https://localhost:8443](https://localhost:8443) — Kết nối mã hóa SSL tự ký |
-| **Grafana Dashboard** | `nhahang_grafana` | `3000` | **`3001`** | [http://localhost:3001](http://localhost:3001) — Trực quan hóa Metrics & Log Explore |
-| **Loki Log Server** | `nhahang_loki` | `3100` | **`3101`** | [http://localhost:3101](http://localhost:3101) — Lưu trữ và đánh chỉ mục Log tập trung |
-| **Prometheus Server** | `nhahang_prometheus` | `9090` | **`9091`** | [http://localhost:9091](http://localhost:9091) — Quản lý Metrics & Tra cứu PromQL |
-| **Backend Web App** | `nhahang_web` | `5000` | **`5000`** | [http://localhost:5000/metrics](http://localhost:5000/metrics) — Node.js Express Server |
-| **PostgreSQL Database** | `nhahang_postgres` | `5432` | **`5433`** | Host port `5433` (tránh xung đột PostgreSQL Windows cổng 5432) |
-| **pgAdmin 4 Quản trị** | `nhahang_pgadmin` | `80` | **`5050`** | [http://localhost:5050](http://localhost:5050) — Quản lý cơ sở dữ liệu qua giao diện |
+| **Grafana Dashboard** | `nhahang_grafana` | `3000` | **`127.0.0.1:3001`** | [http://localhost:3001](http://localhost:3001) — Trực quan hóa Metrics & Log Explore |
+| **Loki Log Server** | `nhahang_loki` | `3100` | **`127.0.0.1:3101`** | [http://localhost:3101](http://localhost:3101) — Lưu trữ và đánh chỉ mục Log tập trung |
+| **Prometheus Server** | `nhahang_prometheus` | `9090` | **`127.0.0.1:9091`** | [http://localhost:9091](http://localhost:9091) — Quản lý Metrics & Tra cứu PromQL |
+| **Backend Web App** | `nhahang_web` | `5000` | **`127.0.0.1:5000`** | [http://localhost:5000/metrics](http://localhost:5000/metrics) — Node.js Express Server (Non-root `node`) |
+| **PostgreSQL Database** | `nhahang_postgres` | `5432` | **`127.0.0.1:5433`** | Host port `127.0.0.1:5433` (khóa localhost an toàn, tránh xung đột PostgreSQL máy host) |
+| **pgAdmin 4 Quản trị** | `nhahang_pgadmin` | `80` | **`127.0.0.1:5050`** | [http://localhost:5050](http://localhost:5050) — Quản lý cơ sở dữ liệu qua giao diện |
 | **Promtail Log Agent** | `nhahang_promtail` | `9080` | *Nội bộ* | Thu thập log container và Nginx files đẩy về Loki |
 | **Postgres Exporter** | `nhahang_postgres_exporter`| `9187` | *Nội bộ* | Thu thập metrics kết nối & giao dịch PostgreSQL |
 | **Nginx Exporter** | `nhahang_nginx_exporter` | `9113` | *Nội bộ* | Thu thập metrics kết nối & request từ Nginx `stub_status` |
 
-> [!NOTE]
-> Tất cả các cổng host (**`8088`**, **`8443`**, **`9091`**, **`3001`**, **`3101`**, **`5050`**, **`5433`**) đều được tách biệt hoàn toàn để **không xung đột** với bất kỳ dịch vụ hay bài thực hành cũ nào trên máy (WordPress 8080, Grafana cũ 3000, Loki cũ 3100).
+> [!TIP]
+> Tất cả các cổng nội bộ và dịch vụ quản trị nhạy cảm (**`5433`**, **`5050`**, **`9091`**, **`3001`**, **`3101`**, **`5000`**) đều được **bind cố định vào `127.0.0.1`**, ngăn ngừa hoàn toàn nguy cơ quét cổng hoặc tấn công từ mạng ngoài/LAN, nhưng vẫn đảm bảo 100% khả năng truy cập từ trình duyệt máy Windows của bạn.
 
 ---
 
@@ -89,13 +92,22 @@ Hệ thống được đóng gói hoàn toàn trong môi trường Docker bằng
 3. **Giám Sát Hệ Thống Thời Gian Thực (Giai đoạn 3)**:
    - **Metrics Express (`prom-client`)**: Đo lường lưu lượng HTTP, thời gian phản hồi Histogram (P50, P95), request active, runtime Node.js và số liệu nghiệp vụ DB sống (13 món ăn, trạng thái bàn ăn, đơn hàng).
    - **Postgres Exporter & Nginx Exporter**: Kết nối DB và lưu lượng Nginx stub_status.
-   - **Grafana Dashboard Tự Động**: 3 hàng panel trực quan hóa tại [http://localhost:3001/d/maison-xuan-overview](http://localhost:3001/d/maison-xuan-overview).
+   - **Grafana Dashboard Tự Động**: Trực quan hóa toàn diện tại [http://localhost:3001/d/maison-xuan-overview](http://localhost:3001/d/maison-xuan-overview).
 
-4. **Thu Thập Nhật Ký Tập Trung (Giai đoạn 4 — MỚI)**:
+4. **Thu Thập Nhật Ký Tập Trung (Giai đoạn 4)**:
    - **Loki Server (`nhahang_loki` - 3101)**: Lưu trữ log tập trung, đánh chỉ mục theo nhãn siêu nhẹ.
    - **Promtail Shipper (`nhahang_promtail`)**: Thu thập log Nginx (từ volume `nhahang_nginx_logs`) và toàn bộ stdout/stderr của các container dự án qua Docker socket.
    - **Request Logger Middleware**: Ghi nhận có cấu trúc mọi HTTP request trong Express (thời gian ISO, level, method, URL, status code, latency).
    - **Grafana Data Source**: Tự động kết nối Loki vào Grafana Explore song song với Prometheus.
+
+5. **Security Hardening & Giám Sát Tài Nguyên Hệ Thống (Giai đoạn 5 — MỚI)**:
+   - **Non-root User**: Container `nhahang_web` chạy bằng user `node` (UID=1000, GID=1000), loại bỏ hoàn toàn quyền root.
+   - **3-Tier Network Isolation**: Tách 3 mạng Docker (`nhahang_frontend_net`, `nhahang_backend_net`, `nhahang_monitoring_net`). Nginx không thể kết nối trực tiếp vào Database.
+   - **Localhost Binding (127.0.0.1)**: Toàn bộ cổng cơ sở dữ liệu và quản trị chỉ mở trên máy cục bộ, bảo vệ an toàn trước mạng ngoài.
+   - **Information Disclosure Protection**: Thêm `server_tokens off;`, `proxy_hide_header X-Powered-By;` và `app.disable('x-powered-by');` để ẩn triệt để phiên bản Nginx và Node.js Express.
+   - **Privilege Hardening**: Áp dụng `security_opt: [no-new-privileges:true]` chống leo thang đặc quyền.
+   - **CPU & RAM Monitoring**: Thêm 2 biểu đồ Timeseries đo tỷ lệ tải CPU (% CPU Usage Rate) và dung lượng RAM thực tế (Memory RSS & Heap) vào Grafana Dashboard.
+
 
 ---
 

@@ -12,8 +12,12 @@ const ordersRouter = require('./routes/orders');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Bảo mật: Tắt header X-Powered-By để tránh lộ thông tin công nghệ Express
+app.disable('x-powered-by');
+
 // Middleware
 app.use(cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

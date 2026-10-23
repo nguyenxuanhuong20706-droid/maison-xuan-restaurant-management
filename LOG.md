@@ -74,70 +74,51 @@ C:\Users\HUONG\Documents\NhaHang\
 ├── nginx/
 │   ├── conf.d/
 │   │   └── default.conf  # Virtual host: Proxy 80/443, SSL, Headers, stub_status
-│   ├── ssl/              # Chứa selfsigned.crt và selfsigned.key (được gitignore)
-│   ├── generate-ssl.sh
-│   └── generate-ssl.ps1
-├── prometheus/
-│   └── prometheus.yml    # Cấu hình scrape interval 5s và 4 targets
-└── src/
-    ├── index.js          # Khởi tạo Express, tích hợp metrics middleware & /metrics route
-    ├── metrics.js        # Module đo lường prom-client và truy vấn business metrics
-    ├── db.js             # Quản lý connection pool PostgreSQL
-    ├── initDb.js         # Khởi tạo schema 4 bảng và nạp dữ liệu mẫu
-    ├── routes/
-    │   ├── dishes.js     # API CRUD thực đơn
-    │   ├── tables.js     # API quản lý bàn ăn
-    │   └── orders.js     # API tạo đơn và thanh toán
-    └── public/           # Giao diện người dùng tĩnh
-```
-
----
-
-## 📊 PHẦN 3: ĐÁNH GIÁ TIẾN ĐỘ THEO TIÊU CHÍ BÀI THI
-
-| STT | Tiêu chí đánh giá bài thi | Trạng thái | Chi tiết hiện trạng thực tế |
-|---|---|---|---|
-| 1 | **GitHub & Quản lý phiên bản (Tối thiểu 3 commit)** | 🔄 **Đạt 2/3 commit** | Đã có Commit 1 (`179656d`), Commit 2 (`5564b43`). Chuẩn bị commit cho Giai đoạn 3 & 4. |
-| 2 | **Ứng dụng Web & Database (Docker Compose)** | ✅ **Đạt** | Chạy ổn định trên Docker Compose, 4 bảng dữ liệu trong PostgreSQL, 13 món ăn lưu bền vững. |
+│   ├── ssl/              # Chứa selfsigned.crt và selfsigned.key (được | 1 | **GitHub & Quản lý phiên bản (Tối thiểu 3 commit)** | ✅ **Đạt xuất sắc** | Đã có Commit 1 (`179656d`), Commit 2 (`5564b43`), Commit 3 (`99fe137`). Chuẩn bị commit cho Giai đoạn 5. |
+| 2 | **Ứng dụng Web & Database (Docker Compose)** | ✅ **Đạt** | Chạy ổn định trên Docker Compose, 4 bảng dữ liệu trong PostgreSQL, 13 món ăn và 6 bàn ăn lưu bền vững. |
 | 3 | **Nginx Reverse Proxy & SSL Gateway** | ✅ **Đạt** | Nginx Alpine làm Reverse Proxy, HTTP cổng 8088, HTTPS cổng 8443, đầy đủ 4 Security Headers. |
-| 4 | **Giám sát hệ thống (Prometheus & Grafana)** | ✅ **Đạt xuất sắc** | Prometheus (9091) scrape 4/4 targets `UP`. Grafana (3001) nạp sẵn Dashboard đo lường đầy đủ Web App, DB, Nginx và nghiệp vụ nhà hàng. |
+| 4 | **Giám sát hệ thống (Prometheus & Grafana)** | ✅ **Đạt xuất sắc** | Prometheus (9091) scrape 4/4 targets `UP`. Grafana (3001) nạp sẵn Dashboard đo lường Web App, DB, Nginx, nghiệp vụ và tài nguyên CPU/RAM. |
 | 5 | **Thu thập Log (Loki & Promtail)** | ✅ **Đạt xuất sắc** | Loki 3.0 (3101) & Promtail thu thập log tập trung từ Express, Nginx (access/error) và PostgreSQL. Datasource Loki tích hợp vào Grafana (3001). Đã kiểm thử 3 LogQL trả về kết quả thực tế. |
-| 6 | **Bảo mật cơ bản & Nâng cao** | ✅ **Đạt** | `.env` tách biệt, chống SQL Injection, SSL/TLS tự ký, 4 HTTP Security Headers, cấm truy cập stub_status từ ngoài, đổi mật khẩu an toàn. |
-| 7 | **Báo cáo (>= 10 trang) & Demo** | ⏳ **Chưa làm** | Chuẩn bị soạn thảo ở giai đoạn 5 hoàn thiện. |
+| 6 | **Bảo mật cơ bản & Nâng cao** | ✅ **Đạt xuất sắc** | Non-root `node` (UID=1000), 3-tier Network Isolation, 127.0.0.1 Binding cho cổng quản trị/DB, ẩn phiên bản Nginx & X-Powered-By, `no-new-privileges:true`. |
+| 7 | **Báo cáo (>= 10 trang) & Demo** | 🔄 **Đang hoàn thiện** | Đã có tài liệu vấn đáp chi tiết 5 giai đoạn tại thư mục `docs/`. Chuẩn bị soạn báo cáo tổng hợp. |
 
 ---
 
-## ✅ PHẦN 4: CÁC KẾT QUẢ ĐÃ KIỂM CHỨNG THỰC TẾ (GIAI ĐOẠN 3 & GIAI ĐOẠN 4)
+## ✅ PHẦN 4: CÁC KẾT QUẢ ĐÃ KIỂM CHỨNG THỰC TẾ (GIAI ĐOẠN 5)
 
 1. **Kiểm tra trạng thái cụm 10 container (`docker compose ps`):**
    - Cả 10 container (`nhahang_nginx`, `nhahang_web`, `nhahang_postgres`, `nhahang_pgadmin`, `nhahang_postgres_exporter`, `nhahang_nginx_exporter`, `nhahang_prometheus`, `nhahang_grafana`, `nhahang_loki`, `nhahang_promtail`) đều đang hoạt động `Up` hoặc `healthy`.
-2. **Kiểm tra Prometheus Targets (`http://localhost:9091/api/v1/targets`):**
-   - Scrape 4/4 targets `UP`: `nhahang_web`, `nhahang_postgres`, `nhahang_nginx`, `prometheus`.
-3. **Kiểm tra Grafana Provisioning (Datasources & Dashboards):**
-   - Datasource **Prometheus** (`http://nhahang_prometheus:9090`) và **Loki** (`http://loki:3100`) đều tự động cấu hình và kết nối thành công.
-   - Dashboard `maison-xuan-overview` được nạp sẵn tại [http://localhost:3001/d/maison-xuan-overview](http://localhost:3001/d/maison-xuan-overview).
-4. **Kiểm tra Loki Ingestion & 3 câu truy vấn LogQL thực tế:**
-   - **LogQL 1 (Express App):** `{service="nhahang_web"}` — Ghi nhận log request chuẩn cấu trúc ISO timestamp, HTTP method, URL, status code, latency.
-   - **LogQL 2 (Nginx Gateway):** `{service="nhahang_nginx"}` — Ghi nhận access log HTTP/HTTPS và error log từ volume chia sẻ `/var/log/nginx/*_*.log`.
-   - **LogQL 3 (Cảnh báo & Lỗi 4xx/5xx):** `{service="nhahang_web"} |= "WARN"` hoặc `{service=~"nhahang_web|nhahang_nginx"} |~ "404|500|WARN|ERROR"` — Bắt chính xác các request gọi endpoint không tồn tại (HTTP 404).
-5. **Kiểm tra bảo mật và dữ liệu:**
-   - 13 món ăn và cấu hình nghiệp vụ trong `nhahang_pgdata` được bảo toàn nguyên vẹn.
-   - Mật khẩu và token không bị xuất hiện trong log hoặc commit Git.
+   - Các cổng nhạy cảm (`5433`, `5050`, `9091`, `3001`, `3101`, `5000`) đều được khóa chặt vào `127.0.0.1`.
+2. **Kiểm tra Non-root user trong `nhahang_web`:**
+   - Lệnh `docker compose exec app id` trả về: `uid=1000(node) gid=1000(node) groups=1000(node)`.
+   - Lệnh `docker compose exec app whoami` trả về: `node`.
+3. **Kiểm tra Network Isolation (Phân vùng 3 mạng):**
+   - Từ Nginx gọi tới Database: `docker compose exec nginx nc -z -v -w 2 db 5432` -> `nc: bad address 'db'` (Cô lập thành công 100%).
+   - Từ Web App gọi tới Database: `docker compose exec app nc -z -v -w 2 db 5432` -> `db open` (Kết nối nội bộ thành công).
+4. **Kiểm tra ẩn thông tin nhạy cảm (Information Disclosure):**
+   - Lệnh `curl.exe -I -s http://localhost:8088/` trả về:
+     - `Server: nginx` (đã loại bỏ số phiên bản Nginx).
+     - Triệt tiêu hoàn toàn header `X-Powered-By: Express`.
+     - Duy trì đầy đủ 4 Security Headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy`.
+5. **Kiểm tra Giám sát CPU/RAM trên Grafana:**
+   - Đã bổ sung Hàng Panel 4: *Giám sát tài nguyên hệ thống & tiến trình (CPU & RAM)* vào Dashboard `maison-xuan-overview`.
+   - Panel CPU đo % tải thực tế của Node.js Express và các exporters (`rate(nhahang_nodejs_process_cpu_seconds_total[1m]) * 100`).
+   - Panel RAM đo dung lượng bộ nhớ thực tế (khoảng 71 MB cho Node.js Express, 126 MB cho Prometheus).
+6. **Kiểm tra tính toàn vẹn dữ liệu:**
+   - 13 món ăn, 6 bàn ăn và 4 đơn hàng trong PostgreSQL được bảo toàn nguyên vẹn.
+   - Tài khoản và mật khẩu của PostgreSQL, pgAdmin và Grafana hoạt động ổn định.
 
 ---
 
-## 📋 PHẦN 5: DANH SÁCH CÔNG VIỆC TIẾP THEO (GIAI ĐOẠN 5)
+## 📋 PHẦN 5: DANH SÁCH CÔNG VIỆC TIẾP THEO
 
-1. **Bước 1 (Người dùng kiểm tra):** Truy cập Grafana Explore [http://localhost:3001/explore](http://localhost:3001/explore) kiểm tra Loki datasource và chạy thử 3 câu truy vấn LogQL.
-2. **Bước 2 (Xem xét cAdvisor theo yêu cầu đề thi):**
-   - Hiện tại hệ thống đã có Node.js runtime metrics (`process_cpu_user_seconds_total`, `nodejs_heap_size_total_bytes`) và PostgreSQL DB metrics.
-   - Đề xuất bổ sung dịch vụ `cadvisor` (container `nhahang_cadvisor`, host port `8085`) để thu thập thông số CPU/RAM cgroup của từng container riêng biệt theo chuẩn đề thi.
-3. **Bước 3 (Thực hiện Commit):**
+1. **Bước 1 (Người dùng kiểm tra):** Kiểm tra lại giao diện website, pgAdmin (5050), Grafana Dashboard CPU/RAM (3001) trên máy Windows.
+2. **Bước 2 (Thực hiện Commit Giai đoạn 5):**
    ```bash
    git add .
-   git commit -m "feat: tich hop Loki va Promtail centralized logging kem Grafana Loki datasource"
+   git commit -m "feat: security hardening non-root 3-tier network isolation va container resource monitoring"
    git push origin main
    ```
-4. **Bước 4 (Soạn báo cáo hoàn chỉnh & Vấn đáp):**
-   - Tạo tài liệu báo cáo kỹ thuật tổng hợp toàn bộ 5 giai đoạn (>= 10 trang, kèm ảnh chụp).
-   - Chuẩn bị kịch bản demo trực tiếp cho giảng viên.
+3. **Bước 3 (Soạn thảo Báo cáo tổng hợp >= 10 trang):**
+   - Tổng hợp nội dung từ `README.md`, `LOG.md` và 5 file `docs/VAN_DAP_GIAI_DOAN_*.md`.
+   - Chèn 12 ảnh chụp màn hình theo danh sách hướng dẫn tại `docs/VAN_DAP_GIAI_DOAN_5.md`.
